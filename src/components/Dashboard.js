@@ -3,11 +3,12 @@ import Loading from "components/Loading";
 import Panel from "components/Panel";
 import classnames from "classnames";
 import {
- getTotalInterviews,
- getLeastPopularTimeSlot,
- getMostPopularDay,
- getInterviewsPerDay
+  getTotalInterviews,
+  getLeastPopularTimeSlot,
+  getMostPopularDay,
+  getInterviewsPerDay,
 } from "helpers/selectors";
+import { setInterview } from "helpers/reducers";
 import axios from "axios";
 
 class Dashboard extends Component {
@@ -35,9 +36,25 @@ class Dashboard extends Component {
       });
     });
 
+    this.socket = new WebSocket(process.env.REACT_APP_WEBSOCKET_URL);
+
+    this.socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (typeof data === "object" && data.type === "SET_INTERVIEW") {
+        this.setState((previousState) =>
+          setInterview(previousState, data.id, data.interview)
+        );
+      }
+    };
+
     if (focused) {
       this.setState({ focused });
     }
+  }
+
+  componentWillUnmount() {
+    this.socket.close();
   }
 
   componentDidUpdate(previousProps, previousState) {
@@ -82,24 +99,23 @@ const data = [
   {
     id: 1,
     label: "Total Interviews",
-    getValue: getTotalInterviews
+    getValue: getTotalInterviews,
   },
   {
     id: 2,
     label: "Least Popular Time Slot",
-    getValue: getLeastPopularTimeSlot
+    getValue: getLeastPopularTimeSlot,
   },
   {
     id: 3,
     label: "Most Popular Day",
-    getValue: getMostPopularDay
+    getValue: getMostPopularDay,
   },
   {
     id: 4,
     label: "Interviews Per Day",
-    getValue: getInterviewsPerDay
-  }
+    getValue: getInterviewsPerDay,
+  },
 ];
-
 
 export default Dashboard;
