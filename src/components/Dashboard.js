@@ -2,20 +2,57 @@ import React, { Component } from "react";
 import Loading from "components/Loading";
 import Panel from "components/Panel";
 import classnames from "classnames";
+import {
+ getTotalInterviews,
+ getLeastPopularTimeSlot,
+ getMostPopularDay,
+ getInterviewsPerDay
+} from "helpers/selectors";
+import axios from "axios";
 
 class Dashboard extends Component {
   state = {
-    loading: false,
+    loading: true,
     focused: null,
+    days: [],
+    appointments: {},
+    interviewers: {},
   };
 
+  componentDidMount() {
+    const focused = JSON.parse(localStorage.getItem("focused"));
+
+    Promise.all([
+      axios.get("/api/days"),
+      axios.get("/api/appointments"),
+      axios.get("/api/interviewers"),
+    ]).then(([days, appointments, interviewers]) => {
+      this.setState({
+        loading: false,
+        days: days.data,
+        appointments: appointments.data,
+        interviewers: interviewers.data,
+      });
+    });
+
+    if (focused) {
+      this.setState({ focused });
+    }
+  }
+
+  componentDidUpdate(previousProps, previousState) {
+    if (previousState.focused !== this.state.focused) {
+      localStorage.setItem("focused", JSON.stringify(this.state.focused));
+    }
+  }
+
   selectPanel(id) {
-    this.setState(prev => ({focused: prev.focused !== null ? null : id }));
+    this.setState((prev) => ({ focused: prev.focused !== null ? null : id }));
   }
 
   render() {
     const dashboardClasses = classnames("dashboard", {
-      "dashboard--focused": this.state.focused
+      "dashboard--focused": this.state.focused,
     });
 
     if (this.state.loading) {
@@ -25,9 +62,16 @@ class Dashboard extends Component {
     return (
       <main className={dashboardClasses}>
         {data
-          .filter((x) => this.state.focused ? x.id === this.state.focused : true)
-          .map((x) => (
-            <Panel onSelect={event => this.selectPanel(x.id)} key={x.id} label={x.label} value={x.value} />
+          .filter((x) =>
+            this.state.focused ? x.id === this.state.focused : true
+          )
+          .map((panel) => (
+            <Panel
+              onSelect={(event) => this.selectPanel(panel.id)}
+              key={panel.id}
+              label={panel.label}
+              value={panel.getValue(this.state)}
+            />
           ))}
       </main>
     );
@@ -38,23 +82,24 @@ const data = [
   {
     id: 1,
     label: "Total Interviews",
-    value: 6,
+    getValue: getTotalInterviews
   },
   {
     id: 2,
     label: "Least Popular Time Slot",
-    value: "1pm",
+    getValue: getLeastPopularTimeSlot
   },
   {
     id: 3,
     label: "Most Popular Day",
-    value: "Wednesday",
+    getValue: getMostPopularDay
   },
   {
     id: 4,
     label: "Interviews Per Day",
-    value: "2.3",
-  },
+    getValue: getInterviewsPerDay
+  }
 ];
+
 
 export default Dashboard;
